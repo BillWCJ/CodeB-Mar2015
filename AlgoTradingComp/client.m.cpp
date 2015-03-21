@@ -17,6 +17,21 @@ using namespace std;
 using namespace galik;
 using namespace galik::net;
 
+struct Transaction{
+    string ticker;
+    double price;
+    int shares;
+    Transaction(string ticker, double price, int shares){
+        this->ticker = ticker;
+        this->price = price;
+        this->shares = shares;
+    }
+};
+
+socketstream ss;
+vector<Transaction> buys;
+vector<Transaction> sells;
+
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
 	size_t start = 0, end = 0;
 	while ((end = s.find(delim, start)) != string::npos) {
@@ -27,22 +42,28 @@ std::vector<std::string> &split(const std::string &s, char delim, std::vector<st
 	return elems;
 }
 
-struct Transaction{
-    string ticker;
-    double price;
-    int shares;
-};
-
 double myCash(){
     while (ss.good() && !ss.eof()){
         string line;
-        getline(ss,)
+        getline(ss, line);
+        string token = line.substr(0, line.find(' '));
+        line.erase(0, line.find(' ')+1);
+        if (token == "BUY" || token == "SELL"){
+            string ticker = line.substr(0, line.find(' '));
+            line.erase(0, line.find(' ')+1);
+            double price = atof(line.substr(0, line.find(' ')));
+            line.erase(0, line.find(' ')+1);
+            int shares = atoi(line.substr(0, line.find(' ')));
+            line.erase(0, line.find(' ')+1);
+            if (token == "BUY")
+                buys.push_back(Transaction(ticker, price, shares));
+            if (token == "SELL")
+                buys.push_back(Transaction(ticker, price, shares));
+        }
+        else
+            return atoi(line));
     }
 }
-
-socketstream ss;
-vector<Transaction> buys;
-vector<Transaction> sells;
 
 
 int main() {
@@ -57,10 +78,23 @@ int main() {
 	while (true){
         /*write actual code here*/
 
-        while (ss.good() && !ss.eof()) {
+        while (ss.good() && !ss.eof()){
             string line;
             getline(ss, line);
-            cout << line << endl;
+            string token = line.substr(0, line.find(' '));
+            line.erase(0, line.find(' ')+1);
+            if (token == "BUY" || token == "SELL"){
+                string ticker = line.substr(0, line.find(' '));
+                line.erase(0, line.find(' ')+1);
+                double price = atof(line.substr(0, line.find(' ')));
+                line.erase(0, line.find(' ')+1);
+                int shares = atoi(line.substr(0, line.find(' ')));
+                line.erase(0, line.find(' ')+1);
+                if (token == "BUY")
+                    buys.push_back(Transaction(ticker, price, shares));
+                if (token == "SELL")
+                    buys.push_back(Transaction(ticker, price, shares));
+            }
         }
 	}
 
