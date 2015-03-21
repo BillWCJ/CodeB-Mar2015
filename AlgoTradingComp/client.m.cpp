@@ -31,7 +31,7 @@ string SendCommand(string command){
     if (ss.good() && !ss.eof()) {
         string line;
         getline(ss, line);
-        cout << line << endl;
+        return line;
     }
     return "ERROR CAN'T READ";
 }
@@ -55,8 +55,8 @@ struct StockClass{
 
         ostringstream cmd;
         cmd << "BID " << ticker << " " << price << " " << numshare;
-
-        if (SendCommand(cmd.str()) == "BID_OUT DONE")
+        string result = SendCommand(cmd.str());
+        if (result.length() >= 12 && result.substr(0,12) == "BID_OUT DONE")
             return true;
 
         return false;
@@ -70,8 +70,8 @@ struct StockClass{
 
         ostringstream cmd;
         cmd << "ASK " << ticker << " " << price << " " << numshare;
-
-        if (SendCommand(cmd.str()) == "ASK_OUT DONE")
+        string result = SendCommand(cmd.str());
+        if (result.length() >= 12 && result.substr(0,12) == "ASK_OUT DONE")
             return true;
 
         return false;
@@ -79,8 +79,8 @@ struct StockClass{
 
     bool ClearBid(){
         string command = "CLEAR_BID " + ticker;
-
-        if (SendCommand(command) == "CLEAR_BID_OUT DONE")
+        string result = SendCommand(command);
+        if (result.length() >= 18 && result.substr(0,18) == "CLEAR_BID_OUT DONE")
             return true;
 
         return false;
@@ -88,8 +88,8 @@ struct StockClass{
 
     bool ClearAsk(){
         string command = "CLEAR_ASK " + ticker;
-
-        if (SendCommand(command) == "CLEAR_ASK_OUT DONE")
+        string result = SendCommand(command);
+        if (result.length() >= 18 && result.substr(0,18) == "CLEAR_ASK_OUT DONE")
             return true;
 
         return false;
@@ -157,10 +157,8 @@ int main(int argc, char** argv) {
             continue;
         }
         else if(command.length() >=3 && command.substr(0,3) == "bid"){
-            cout << "input price" << endl;
             cin >> price;
-            cout << price;
-            cout << AAPL.PlaceBid(price, 1) << endl;
+            cout << "RESULT:" << AAPL.PlaceBid(price, 1) << endl;
             continue;
         }
         else if(command.length() >= 3 && command.substr(0,3) == "cla"){
