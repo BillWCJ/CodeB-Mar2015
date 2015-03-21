@@ -43,6 +43,7 @@ std::vector<std::string> &split(const std::string &s, char delim, std::vector<st
 }
 
 double myCash(){
+    ss << "MY_CASH";
     while (ss.good() && !ss.eof()){
         string line;
         getline(ss, line);
@@ -51,17 +52,17 @@ double myCash(){
         if (token == "BUY" || token == "SELL"){
             string ticker = line.substr(0, line.find(' '));
             line.erase(0, line.find(' ')+1);
-            double price = atof(line.substr(0, line.find(' ')));
+            double price = atof(line.substr(0, line.find(' ')).c_str());
             line.erase(0, line.find(' ')+1);
-            int shares = atoi(line.substr(0, line.find(' ')));
+            int shares = atoi(line.substr(0, line.find(' ')).c_str());
             line.erase(0, line.find(' ')+1);
             if (token == "BUY")
                 buys.push_back(Transaction(ticker, price, shares));
             if (token == "SELL")
                 buys.push_back(Transaction(ticker, price, shares));
         }
-        else
-            return atoi(line));
+        else if (token == "MY_CASH_OUT")
+            return atof(line.c_str());
     }
 }
 
@@ -75,8 +76,9 @@ int main() {
     ss.open(host, port);
 	ss << name << " " << password << "\n" << "SUBSCRIBE" << endl;
 
-	while (true){
+	for (int i=0; i<100; i++){
         /*write actual code here*/
+        cout << myCash();
 
         while (ss.good() && !ss.eof()){
             string line;
@@ -86,9 +88,9 @@ int main() {
             if (token == "BUY" || token == "SELL"){
                 string ticker = line.substr(0, line.find(' '));
                 line.erase(0, line.find(' ')+1);
-                double price = atof(line.substr(0, line.find(' ')));
+                double price = atof(line.substr(0, line.find(' ')).c_str());
                 line.erase(0, line.find(' ')+1);
-                int shares = atoi(line.substr(0, line.find(' ')));
+                int shares = atoi(line.substr(0, line.find(' ')).c_str());
                 line.erase(0, line.find(' ')+1);
                 if (token == "BUY")
                     buys.push_back(Transaction(ticker, price, shares));
