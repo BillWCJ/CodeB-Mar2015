@@ -11,95 +11,181 @@
 #include <iostream>
 #include <stdio.h>
 #include <vector>
+#include <map>
+#include <sstream>
 
 using namespace std;
-
 using namespace galik;
 using namespace galik::net;
 
-struct Transaction{
-    string ticker;
+socketstream ss;
+
+struct Position{
     double price;
-    int shares;
-    Transaction(string ticker, double price, int shares){
-        this->ticker = ticker;
-        this->price = price;
-        this->shares = shares;
-    }
+    int numshares;
 };
 
-socketstream ss;
-vector<Transaction> buys;
-vector<Transaction> sells;
-
-std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
-	size_t start = 0, end = 0;
-	while ((end = s.find(delim, start)) != string::npos) {
-		elems.push_back(s.substr(start, end - start));
-		start = end + 1;
-	}
-	elems.push_back(s.substr(start));
-	return elems;
-}
-
-double myCash(){
-    ss << "MY_CASH";
-    while (ss.good() && !ss.eof()){
+//send command with return line in the end! Do not double return line
+string SendCommand(string command){
+    ss << command << endl;
+    if (ss.good() && !ss.eof()) {
         string line;
         getline(ss, line);
-        string token = line.substr(0, line.find(' '));
-        line.erase(0, line.find(' ')+1);
-        if (token == "BUY" || token == "SELL"){
-            string ticker = line.substr(0, line.find(' '));
-            line.erase(0, line.find(' ')+1);
-            double price = atof(line.substr(0, line.find(' ')).c_str());
-            line.erase(0, line.find(' ')+1);
-            int shares = atoi(line.substr(0, line.find(' ')).c_str());
-            line.erase(0, line.find(' ')+1);
-            if (token == "BUY")
-                buys.push_back(Transaction(ticker, price, shares));
-            if (token == "SELL")
-                buys.push_back(Transaction(ticker, price, shares));
-        }
-        else if (token == "MY_CASH_OUT")
-            return atof(line.c_str());
+        cout << line << endl;
     }
+    return "ERROR CAN'T READ";
 }
 
+struct StockClass{
+    string ticker;
+    double net_worth;
+    vector<Position> bids;
+    vector<Position> asks;
+    Position my_bid;
+    Position my_ask;
+    double volatility;
+    double div_ratio;
+    int owned;
 
-int main() {
-    //setup
+    bool PlaceBid(double price, int numshare){
+        if (price < 0.0)
+            return false;
+        if (numshare <= 0)
+            return false;
+
+        ostringstream cmd;
+        cmd << "BID " << ticker << " " << price << " " << numshare;
+
+        if (SendCommand(cmd.str()) == "BID_OUT DONE")
+            return true;
+
+        return false;
+    };
+
+    bool PlaceAsk(double price, int numshare){
+        if (price < 0.0)
+            return false;
+        if (numshare <= 0)
+            return false;
+
+        ostringstream cmd;
+        cmd << "ASK " << ticker << " " << price << " " << numshare;
+
+        if (SendCommand(cmd.str()) == "ASK_OUT DONE")
+            return true;
+
+        return false;
+    };
+
+    bool ClearBid(){
+        string command = "CLEAR_BID " + ticker;
+
+        if (SendCommand(command) == "CLEAR_BID_OUT DONE")
+            return true;
+
+        return false;
+    };
+
+    bool ClearAsk(){
+        string command = "CLEAR_ASK " + ticker;
+
+        if (SendCommand(command) == "CLEAR_ASK_OUT DONE")
+            return true;
+
+        return false;
+    };
+};
+
+map<string, StockClass*> Stock;
+
+struct Portfoilo {
+    public:
+
+    vector<StockClass> Stocks;
+    map<string, StockClass*> Stock;
+    double TeamNetWorth;
+    double Cash;
+
+    Portfoilo(){
+        string name = "lisgarppls";
+        string password = "doeobdi";
+        string host = "codebb.cloudapp.net";
+        int port = 17429;
+        ss.open(host, port);
+        ss << name << " " << password << endl;
+    }
+
+    ~Portfoilo(){
+        ss << "CLOSE_CONNECTION" << endl;
+    }
+
+    double UpdateTeamNetWorth();
+    void StartAutomaticTrading(int numcycles);
+    double UpdateCash();
+    bool UpdateSecurities();
+    bool UpdateMyOrders();
+    bool UpdateOrders();
+};
+
+int main(int argc, char** argv) {
+
     string name = "lisgarppls";
     string password = "doeobdi";
     string host = "codebb.cloudapp.net";
     int port = 17429;
+    string command = "";
+
     ss.open(host, port);
-	ss << name << " " << password << "\n" << "SUBSCRIBE" << endl;
+	ss << name << " " << password << endl;
 
-	for (int i=0; i<100; i++){
-        /*write actual code here*/
-        cout << myCash();
+    StockClass AAPL;
+    AAPL.ticker = "AAPL";
+    double price;
 
-        while (ss.good() && !ss.eof()){
+    while(true){
+        fflush(stdin);
+        getline(cin,command);
+        cout << "Command123:" << command << endl;
+
+        if(command == "close" || command == ""){
+            ss << "CLOSE_CONNECTION" << endl;
+            return 0;
+        }
+        else if(command.length() >=3 && command.substr(0,3) == "ask"){
+            cin >> price;
+            cout << AAPL.PlaceAsk(price, 1) << endl;
+            continue;
+        }
+        else if(command.length() >=3 && command.substr(0,3) == "bid"){
+            cout << "input price" << endl;
+            cin >> price;
+            cout << price;
+            cout << AAPL.PlaceBid(price, 1) << endl;
+            continue;
+        }
+        else if(command.length() >= 3 && command.substr(0,3) == "cla"){
+            cout << AAPL.ClearAsk() << endl;
+            continue;
+        }
+        else if(command.length() >= 3 && command.substr(0,3) == "clb"){
+            cout << AAPL.ClearBid() << endl;
+            continue;
+        }
+        else if(command.length() >= 3 && command.substr(0,3) == "ord"){
+            ss << "MY_ORDERS" << endl;
+        }
+        else{
+            ss << command << " " << endl;
+        }
+
+        cout << "lala: " << (ss.good() && !ss.eof()) << endl;
+        if (ss.good() && !ss.eof()) {
             string line;
             getline(ss, line);
-            string token = line.substr(0, line.find(' '));
-            line.erase(0, line.find(' ')+1);
-            if (token == "BUY" || token == "SELL"){
-                string ticker = line.substr(0, line.find(' '));
-                line.erase(0, line.find(' ')+1);
-                double price = atof(line.substr(0, line.find(' ')).c_str());
-                line.erase(0, line.find(' ')+1);
-                int shares = atoi(line.substr(0, line.find(' ')).c_str());
-                line.erase(0, line.find(' ')+1);
-                if (token == "BUY")
-                    buys.push_back(Transaction(ticker, price, shares));
-                if (token == "SELL")
-                    buys.push_back(Transaction(ticker, price, shares));
-            }
+            cout <<"***" << line <<endl << "***" << endl;
         }
-	}
-
-    ss << "\nCLOSE_CONNECTION" << endl;
-	return 0;
+        cout << "cycle done" << endl << endl;
+    }
 }
+
+
