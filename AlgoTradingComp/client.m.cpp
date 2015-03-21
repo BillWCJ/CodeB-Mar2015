@@ -13,6 +13,7 @@
 #include <vector>
 #include <map>
 #include <sstream>
+#include <cmath>
 
 using namespace std;
 
@@ -25,7 +26,8 @@ struct Position{
     int number;
 };
 
-
+map<string, double> marketprice;
+map<string, double> quantity;
 
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
 	size_t start = 0, end = 0;
@@ -126,9 +128,19 @@ struct Stock{
     //        cout << asks[i].number << ' ' << asks[i].price << endl;
     //    }
     }
+    double buyscore;
+    void updatebuyscore() {
+        buyscore = net_worth * div_ratio / quantity[ticker] / asks[0].price;
+        //cout << div_ratio << "okokok" << endl;
+    }
+    double sellscore;
+    void updatesellscore() {
+        sellscore = net_worth * div_ratio / quantity[ticker] / bids[0].price;
+    }
 };
 
 map<string, Stock*> security;
+
 
 double myCash(){
     ss << "MY_CASH " << endl;
@@ -142,7 +154,7 @@ double myCash(){
         }
     }
 }
-
+void mySecurities();
 void securities(){
     top:
     ss << "SECURITIES " << endl;
@@ -168,6 +180,7 @@ void securities(){
                 current->net_worth = atof(info[i].c_str());
                 i++;
                 current->div_ratio = atof(info[i].c_str());
+                //cout << "DIV RATIO: " << current->div_ratio << endl;
                 i++;
                 current->volatility = atof(info[i].c_str());
                 Position posn;
@@ -175,11 +188,13 @@ void securities(){
                 posn.number = 0;
                 current->my_ask = posn;
                 current->my_bid = posn;
+                current->orders();
             }
         }
         else
             goto top;
     }
+    mySecurities();
 
 
 
@@ -206,8 +221,22 @@ void securities(){
 //            cin.get();
 //        }
 //    }
+//    for(map<string,Stock*>::iterator it = security.begin(); it != security.end(); it++) {
+//        cout << it->second->ticker << endl;
+//    }
+}
+
+
+void setmarketprice() {
     for(map<string,Stock*>::iterator it = security.begin(); it != security.end(); it++) {
-        cout << it->second->ticker << endl;
+        double a = security.find(it->first)->second->bids[0].price;
+        double b = security.find(it->first)->second->asks[0].price;
+        marketprice[it->first] = (a+b)/2;
+    }
+}
+void setquantity() {
+    for(map<string,Stock*>::iterator it = security.begin(); it != security.end(); it++) {
+        quantity[it->first] = security.find(it->first)->second->asks[security[it->first]->asks.size()-1].number;
     }
 }
 
@@ -223,7 +252,7 @@ void mySecurities(){
             split(data, ' ', info);
             for (int i=1; i<info.size()-1; i+=3){
                 security.find(info[i])->second->owned = atoi(info[i+1].c_str());
-                security.find(info[i])->second->div_ratio = atof(info[i+2].c_str());
+//                security.find(info[i])->second->div_ratio = atof(info[i+2].c_str());
             }
         }
     }
@@ -258,6 +287,49 @@ void myOrders(){
 //    }
 }
 
+
+void buy() {
+    string maxbuy;
+    double maximum = 0;
+    for(map<string,Stock*>::iterator it = security.begin(); it != security.end(); it++) {
+          security.find(it->first)->second->updatebuyscore();
+          //cout << security.find(it->first)->second->buyscore << endl;
+            if (security.find(it->first)->second->buyscore >= maximum) {
+                maximum = security.find(it->first)->second->buyscore;
+                maxbuy = it->first;
+            }
+    }
+    double p = security.find(maxbuy)->second->asks[0].price;
+    if (myCash()>p){
+        security.find(maxbuy)->second->PlaceBid(p,min(security.find(maxbuy)->second->asks[0].number, int(myCash()/p)));
+        cout << p << " " << min(security.find(maxbuy)->second->asks[0].number, int(myCash()/p));
+        cout << "buy " << maximum << " " << maxbuy << endl;
+    }
+    else {
+            //cout << "selling";
+        string minsell;
+        double minimum = 9999999;
+        for(map<string,Stock*>::iterator it = security.begin(); it != security.end(); it++) {
+          security.find(it->first)->second->updatesellscore();
+//          cout << security.find(it->first)->second->sellscore << endl;
+            if (security.find(it->first)->second->owned>0 && security.find(it->first)->second->sellscore < minimum) {
+                minimum = security.find(it->first)->second->sellscore;
+                minsell = it->first;
+            }
+        }
+        //cout << "selling, maximum: " << maximum << " minimum: " << minimum << endl;
+        if (maximum>minimum){
+            double q = security.find(minsell)->second->bids[0].price;
+            security.find(minsell)->second->PlaceAsk(q,security[minsell]->owned);
+            cout << "sold " << minimum << minsell << endl;
+        }
+    }
+
+
+}
+
+
+
 int main() {
 
     string name = "lisgarppls";
@@ -269,12 +341,18 @@ int main() {
     ss.open(host, port);
 	ss << name << " " << password << endl;
 	securities();
-	securities();
+	setmarketprice();
+	setquantity();
 
 //	cout << myCash();
 //    ss << "CLOSE_CONNECTION" << endl;
 //    return 0;
     while(true){
+        for (int i=0; i<1000; i++){
+            securities();
+            buy();
+        }
+
         //insert code here
         break;
 //        getline(cin,command);
