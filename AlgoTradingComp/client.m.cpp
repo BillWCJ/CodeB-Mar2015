@@ -12,31 +12,20 @@
 #include <stdio.h>
 #include <vector>
 #include <map>
+#include <sstream>
 
 using namespace std;
 
 using namespace galik;
 using namespace galik::net;
 
+socketstream ss;
 struct Position{
     double price;
     int number;
 };
 
-struct Stock{
-    string ticker;
-    double net_worth;
-    vector<Position> bids;
-    vector<Position> asks;
-    Position my_bid;
-    Position my_ask;
-    double volatility;
-    double div_ratio;
-    int owned;
-};
 
-socketstream ss;
-map<string, Stock*> security;
 
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
 	size_t start = 0, end = 0;
@@ -47,6 +36,98 @@ std::vector<std::string> &split(const std::string &s, char delim, std::vector<st
 	elems.push_back(s.substr(start));
 	return elems;
 }
+
+//send command with return line in the end! Do not double return line
+string SendCommand(string command){
+    ss << command << endl;
+    if (ss.good() && !ss.eof()) {
+        string line;
+        getline(ss, line);
+        return line;
+    }
+    return "ERROR CAN'T READ";
+}
+struct Stock{
+    string ticker;
+    double net_worth;
+    vector<Position> bids;
+    vector<Position> asks;
+    Position my_bid;
+    Position my_ask;
+    double volatility;
+    double div_ratio;
+    int owned;
+    bool PlaceBid(double price, int numshare){
+        if (price < 0.0)
+            return false;
+        if (numshare <= 0)
+            return false;
+        ostringstream cmd;
+        cmd << "BID " << ticker << " " << price << " " << numshare;
+        string result = SendCommand(cmd.str());
+        if (result.length() >= 12 && result.substr(0,12) == "BID_OUT DONE")
+            return true;
+        return false;
+    };
+    bool PlaceAsk(double price, int numshare){
+        if (price < 0.0)
+            return false;
+        if (numshare <= 0)
+            return false;
+        ostringstream cmd;
+        cmd << "ASK " << ticker << " " << price << " " << numshare;
+        string result = SendCommand(cmd.str());
+        if (result.length() >= 12 && result.substr(0,12) == "ASK_OUT DONE")
+            return true;
+        return false;
+    };
+    bool ClearBid(){
+        string command = "CLEAR_BID " + ticker;
+        string result = SendCommand(command);
+        if (result.length() >= 18 && result.substr(0,18) == "CLEAR_BID_OUT DONE")
+            return true;
+        return false;
+    };
+    bool ClearAsk(){
+        string command = "CLEAR_ASK " + ticker;
+        string result = SendCommand(command);
+        if (result.length() >= 18 && result.substr(0,18) == "CLEAR_ASK_OUT DONE")
+            return true;
+        return false;
+    };
+    void orders(){
+        ss << "ORDERS " + ticker + " " << endl;
+        if (ss.good() && !ss.eof()){
+            string token;
+            ss >> token;
+            if (token == "SECURITY_ORDERS_OUT"){
+                string data;
+                vector<string> info;
+                getline(ss,data);
+                split(data, ' ', info);
+                asks.clear();
+                bids.clear();
+                for (int i=1; i<info.size()-1; i+=4){
+                    Position posn;
+                    posn.price = atof(info[i+2].c_str());
+                    posn.number = atoi(info[i+3].c_str());
+                    if (info[i]=="BID")
+                        bids.push_back(posn);
+                    else if (info[i]=="ASK")
+                        asks.push_back(posn);
+                }
+            }
+        }
+    //    for (int i=0; i<bids.size(); i++){
+    //        cout << bids[i].number << ' ' << bids[i].price << endl;
+    //    }
+    //    for (int i=0; i<asks.size(); i++){
+    //        cout << asks[i].number << ' ' << asks[i].price << endl;
+    //    }
+    }
+};
+
+map<string, Stock*> security;
 
 double myCash(){
     ss << "MY_CASH " << endl;
@@ -164,40 +245,6 @@ void myOrders(){
     }
 //    for(map<string,Stock*>::iterator it = security.begin(); it != security.end(); it++) {
 //        cout << it->second->my_ask.number << ' ' << it->second->my_ask.price << ' ' << it->second->my_bid.number << ' ' << it->second->my_bid.price << endl;
-//    }
-}
-
-void orders(string ticker){
-    cout << "here";
-    cin.get();
-    ss << "ORDERS " + ticker + " " << endl;
-    Stock *stock = security.find(ticker)->second;
-    if (ss.good() && !ss.eof()){
-        string token;
-        ss >> token;
-        if (token == "SECURITY_ORDERS_OUT"){
-            string data;
-            vector<string> info;
-            getline(ss,data);
-            split(data, ' ', info);
-            stock->asks.clear();
-            stock->bids.clear();
-            for (int i=1; i<info.size()-1; i+=4){
-                Position posn;
-                posn.price = atof(info[i+2].c_str());
-                posn.number = atoi(info[i+3].c_str());
-                if (info[i]=="BID")
-                    stock->bids.push_back(posn);
-                else if (info[i]=="ASK")
-                    stock->asks.push_back(posn);
-            }
-        }
-    }
-//    for (int i=0; i<stock->bids.size(); i++){
-//        cout << stock->bids[i].number << ' ' << stock->bids[i].price << endl;
-//    }
-//    for (int i=0; i<stock->asks.size(); i++){
-//        cout << stock->asks[i].number << ' ' << stock->asks[i].price << endl;
 //    }
 }
 
