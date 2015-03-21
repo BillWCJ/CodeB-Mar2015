@@ -57,6 +57,7 @@ struct Stock{
     double volatility;
     double div_ratio;
     int owned;
+    int numShares;
     bool PlaceBid(double price, int numshare){
         if (price < 0.0)
             return false;
@@ -143,6 +144,7 @@ double myCash(){
 }
 
 void securities(){
+    top:
     ss << "SECURITIES " << endl;
     if (ss.good() && !ss.eof()){
         string token;
@@ -153,8 +155,14 @@ void securities(){
             getline(ss,data);
             split(data, ' ', info);
             for (int i=1; i<info.size()-1; i++){
-                Stock *current = new Stock();
-                security[info[i]] = current;
+                map<string,Stock*>::iterator it = security.find(info[i]);
+                Stock *current;
+                if (it==security.end()){
+                    current = new Stock();
+                    security[info[i]] = current;
+                }
+                else
+                    current = it->second;
                 current->ticker = info[i];
                 i++;
                 current->net_worth = atof(info[i].c_str());
@@ -169,6 +177,8 @@ void securities(){
                 current->my_bid = posn;
             }
         }
+        else
+            goto top;
     }
 
 
@@ -196,9 +206,9 @@ void securities(){
 //            cin.get();
 //        }
 //    }
-//    for(map<string,Stock*>::iterator it = security.begin(); it != security.end(); it++) {
-//        cout << it->second->ticker;
-//    }
+    for(map<string,Stock*>::iterator it = security.begin(); it != security.end(); it++) {
+        cout << it->second->ticker << endl;
+    }
 }
 
 void mySecurities(){
@@ -258,6 +268,8 @@ int main() {
 
     ss.open(host, port);
 	ss << name << " " << password << endl;
+	securities();
+	securities();
 
 //	cout << myCash();
 //    ss << "CLOSE_CONNECTION" << endl;
