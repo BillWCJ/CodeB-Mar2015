@@ -14,12 +14,13 @@
 #include <map>
 #include <sstream>
 #include <cmath>
+#include <time.h>
 
 using namespace std;
 
 using namespace galik;
 using namespace galik::net;
-
+time_t start, end;
 socketstream ss;
 struct Position{
     double price;
@@ -60,6 +61,7 @@ struct Stock{
     double div_ratio;
     int owned;
     int numShares;
+    double lastbought;
     bool PlaceBid(double price, int numshare){
         if (price < 0.0)
             return false;
@@ -141,6 +143,22 @@ struct Stock{
 
 map<string, Stock*> security;
 
+/*
+double myCash(){
+    ss << "MY_CASH " << endl;
+    ss << "CLOSE_CONNECTION\n";
+    if (ss.good() && !ss.eof()) {
+        string token;
+        ss >> token;
+        if (token == "MY_CASH_OUT"){
+            double cash;
+            ss >> cash;
+            ss.open(host,port);
+            return cash;
+        }
+    }
+    ss.open(host,port);
+}*/
 
 double myCash(){
     ss << "MY_CASH " << endl;
@@ -148,12 +166,14 @@ double myCash(){
         string token;
         ss >> token;
         if (token == "MY_CASH_OUT"){
-            double cash;
-            ss >> cash;
-            return cash;
+            string line;
+            getline(ss,line);
+            return atof(line.c_str());
         }
     }
+
 }
+
 void mySecurities();
 void securities(){
     top:
@@ -172,6 +192,7 @@ void securities(){
                 if (it==security.end()){
                     current = new Stock();
                     security[info[i]] = current;
+                    current->lastbought = -999;
                 }
                 else
                     current = it->second;
@@ -252,7 +273,12 @@ void mySecurities(){
             split(data, ' ', info);
             for (int i=1; i<info.size()-1; i+=3){
                 security.find(info[i])->second->owned = atoi(info[i+1].c_str());
-//                security.find(info[i])->second->div_ratio = atof(info[i+2].c_str());
+                if (atof(info[i+2].c_str())!=0)
+                    security.find(info[i])->second->div_ratio = atof(info[i+2].c_str());
+                if (security.find(info[i])->second->owned!=0){
+                    time (&end);
+                    security.find(info[i])->second->lastbought = difftime (end, start);
+                }
             }
         }
     }
@@ -295,15 +321,23 @@ void buy() {
           security.find(it->first)->second->updatebuyscore();
           //cout << security.find(it->first)->second->buyscore << endl;
             if (security.find(it->first)->second->buyscore >= maximum) {
+                time(&end);
+                double seconds = difftime(end,start)-security.find(it->first)->second->lastbought;
+                if (seconds<60 && security.find(it->first)->second->owned==0)
+                    continue;
                 maximum = security.find(it->first)->second->buyscore;
                 maxbuy = it->first;
             }
     }
-    double p = security.find(maxbuy)->second->asks[0].price;
-    if (myCash()>p){
-        security.find(maxbuy)->second->PlaceBid(p,min(security.find(maxbuy)->second->asks[0].number, int(myCash()/p)));
-        cout << p << " " << min(security.find(maxbuy)->second->asks[0].number, int(myCash()/p));
-        cout << "buy " << maximum << " " << maxbuy << endl;
+    bool flag = false;
+    if (maximum==0)
+        flag = true;
+    if (!flag && myCash()>security.find(maxbuy)->second->asks[0].price){
+        double p = security.find(maxbuy)->second->asks[0].price;
+        security.find(maxbuy)->second->PlaceBid(p+0.0001,min(security.find(maxbuy)->second->asks[0].number, int(myCash()/p)));
+        //security.find(maxbuy)->second->ClearBid();
+//        cout << p << " " << min(security.find(maxbuy)->second->asks[0].number, int(myCash()/p));
+//        cout << "buy " << maximum << " " << maxbuy << endl;
     }
     else {
             //cout << "selling";
@@ -320,8 +354,10 @@ void buy() {
         //cout << "selling, maximum: " << maximum << " minimum: " << minimum << endl;
         if (maximum>minimum){
             double q = security.find(minsell)->second->bids[0].price;
-            security.find(minsell)->second->PlaceAsk(q,security[minsell]->owned);
-            cout << "sold " << minimum << minsell << endl;
+            security.find(minsell)->second->PlaceAsk(q-0.0001,security[minsell]->owned);
+            //security.find(minsell)->second->ClearAsk();
+//            cout << "sold " << minimum << minsell << endl;
+//            cout << myCash();
         }
     }
 
@@ -332,6 +368,7 @@ void buy() {
 
 int main() {
 
+    time (&start);
     string name = "lisgarppls";
     string password = "doeobdi";
     string host = "codebb.cloudapp.net";
