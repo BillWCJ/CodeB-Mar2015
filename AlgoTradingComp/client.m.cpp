@@ -27,35 +27,43 @@ std::vector<std::string> &split(const std::string &s, char delim, std::vector<st
 	return elems;
 }
 
-/*
-*
-*/
-int main(int argc, char** argv) {
-	if (argc < 5) {
-		cout << "args: <user> <password> <host> <port> <command>" << endl;
-		cout << argc;
-		exit(1);
+struct Transaction{
+    string ticker;
+    double price;
+    int shares;
+};
+
+double myCash(){
+    while (ss.good() && !ss.eof()){
+        string line;
+        getline(ss,)
+    }
+}
+
+socketstream ss;
+vector<Transaction> buys;
+vector<Transaction> sells;
+
+
+int main() {
+    //setup
+    string name = "lisgarppls";
+    string password = "doeobdi";
+    string host = "codebb.cloudapp.net";
+    int port = 17429;
+    ss.open(host, port);
+	ss << name << " " << password << "\n" << "SUBSCRIBE" << endl;
+
+	while (true){
+        /*write actual code here*/
+
+        while (ss.good() && !ss.eof()) {
+            string line;
+            getline(ss, line);
+            cout << line << endl;
+        }
 	}
 
-	string name(argv[1]);
-	string password(argv[2]);
-
-	socketstream ss;
-	ss.open(argv[3], atoi(argv[4]));
-
-	string command("");
-	for (int i = 5; i < argc; i++) {
-		command += argv[i];
-		command += " ";
-	}
-	command;
-
-	ss << name << " " << password << "\n" << command << "\nCLOSE_CONNECTION" << endl;
-
-	while (ss.good() && !ss.eof()) {
-		string line;
-		getline(ss, line);
-		cout << line << endl;
-	}
+    ss << "\nCLOSE_CONNECTION" << endl;
 	return 0;
 }
